@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns="http://www.springframework.org/schema/integration/jpa"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:tool="http://www.springframework.org/schema/tool"
+	xmlns:integration="http://www.springframework.org/schema/integration"
+	targetNamespace="http://www.springframework.org/schema/integration/jpa"
+	elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+	<xsd:import namespace="http://www.springframework.org/schema/beans" />
+	<xsd:import namespace="http://www.springframework.org/schema/tool" />
+	<xsd:import namespace="http://www.springframework.org/schema/integration"
+		schemaLocation="http://www.springframework.org/schema/integration/spring-integration-2.1.xsd" />
+
+
+	<xsd:annotation>
+		<xsd:documentation><![CDATA[
+			Defines the configuration elements for Spring Integration's JPA Adapter.
+		]]></xsd:documentation>
+	</xsd:annotation>
+
+	<xsd:element name="outbound-gateway">
+		<xsd:annotation>
+			<xsd:documentation>
+				Defines the JPA outbound gateway in Spring
+				Integration 
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:complexType>
+			<xsd:complexContent>
+				<xsd:extension base="outboundJpaComponent">
+					<xsd:attribute name="id" type="xsd:string" />
+					<xsd:attribute name="request-channel" type="xsd:string"
+						use="required">
+						<xsd:annotation>
+							<xsd:documentation>
+								The receiving Message Channel of this
+								endpoint.
+						    </xsd:documentation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.core.MessageChannel" />
+								</tool:annotation>
+							</xsd:appinfo>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="reply-channel" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								Message Channel to which replies should be
+								sent,
+								after receiving the database response.
+						    </xsd:documentation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.core.MessageChannel" />
+								</tool:annotation>
+							</xsd:appinfo>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="reply-timeout" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation><![CDATA[
+		                        Allows you to specify how long this gateway will wait for 
+		                        the reply message to be sent successfully before throwing 
+		                        an exception. Keep in mind that when sending to a 
+		                        DirectChannel, the invocation will occur in the sender's thread
+		                        so the failing of the send operation may be caused by other 
+		                        components further downstream. By default the Gateway will 
+		                        wait indefinitely. The value is specified in milliseconds.
+		                    ]]>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="reply-parameter-source-factory"
+						type="xsd:string">
+						<xsd:annotation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.jpa.JPAQLParameterSourceFactory" />
+								</tool:annotation>
+							</xsd:appinfo>
+							<xsd:documentation>
+								The parameter source factory that would be used for evaluating the
+								parameters of the response JPA QL that would be evaluated
+								JPA outbound gateway
+						</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attributeGroup ref="selectQueryAttributes" />
+				</xsd:extension>
+			</xsd:complexContent>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:element name="outbound-channel-adapter">
+		<xsd:complexType>
+			<xsd:annotation>
+				<xsd:documentation>
+					Defines a JPA outbound adapter for spring
+					integration
+				</xsd:documentation>
+			</xsd:annotation>
+			<xsd:complexContent>
+				<xsd:extension base="outboundJpaComponent">
+					<xsd:attribute name="id" type="xsd:string" />
+					<xsd:attribute name="channel" type="xsd:string">
+						<xsd:annotation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.core.MessageChannel" />
+								</tool:annotation>
+							</xsd:appinfo>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="auto-startup" type="xsd:string"
+						default="true" />
+					<xsd:attribute name="order">
+						<xsd:annotation>
+							<xsd:documentation>
+								Specifies the order for invocation when this
+								endpoint is connected as a
+								subscriber to a SubscribableChannel.
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+				</xsd:extension>
+			</xsd:complexContent>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:complexType name="jpaComponent">
+		<xsd:attribute name="entity-manager-factory" type="xsd:string">
+			<xsd:annotation>
+				<xsd:appinfo>
+					<tool:annotation kind="ref">
+						<tool:expected-type type="javax.persistence.EntityManagerFactory" />
+					</tool:annotation>
+				</xsd:appinfo>
+				<xsd:documentation>
+					The reference to the JPA Entity Manager Factory
+					that will be used by the adapter to create the EntityManagers
+				</xsd:documentation>
+			</xsd:annotation>
+		</xsd:attribute>
+	</xsd:complexType>
+
+	<xsd:complexType name="outboundJpaComponent">
+		<xsd:annotation>
+			<xsd:documentation>
+				Any component that will be used to
+				insert/update/delete using the entity or the jpa-ql provided.
+				The
+				outbound-channel-adapter and the outbound-gateway are the two
+				possible components that will
+				extend this type
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:complexContent>
+			<xsd:extension base="jpaComponent">
+				<xsd:sequence maxOccurs="1" minOccurs="0">
+					<xsd:element name="transactional" type="integration:transactionalType">
+						<xsd:annotation>
+							<xsd:documentation>
+								This element provides the bean name of the
+								PlatformTransactionManager to use
+								based on the attributes
+								specified, appropriate transaction is started
+								before the entity
+								is merged
+								or the given jpa-ql is executed.
+								</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+				<xsd:attribute name="jpa-ql" type="xsd:string">
+					<xsd:annotation>
+						<xsd:documentation>
+							The update of the delete JPA QL to be executed
+							on the outbound
+							JPA adapter or gateway, this element is optional
+							and in it's absence
+							the payload is assumed to be a JPA entity
+						</xsd:documentation>
+					</xsd:annotation>
+				</xsd:attribute>
+				<xsd:attribute name="parameter-source-factory" type="xsd:string">
+					<xsd:annotation>
+						<xsd:appinfo>
+							<tool:annotation kind="ref">
+								<tool:expected-type
+									type="org.springframework.integration.jpa.JPAQLParameterSourceFactory" />
+							</tool:annotation>
+						</xsd:appinfo>
+						<xsd:documentation>
+							The attribute specifies a JPAQlParameterSource
+							that will be used
+							to evaluate the value of the named parameters
+							provided in the
+							given
+							update or delete JPA Ql (given as the value
+							of jpa-ql attribute)
+						</xsd:documentation>
+					</xsd:annotation>
+				</xsd:attribute>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<xsd:complexType name="inboundJpaComponent">
+		<xsd:annotation>
+			<xsd:documentation>
+				Defines the inbound JPA Spring integration
+				components. This type will be extended by the
+				inbound-channel-adapter and will be used by the outbound-gateway
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:complexContent>
+			<xsd:extension base="jpaComponent">
+				<xsd:attributeGroup ref="selectQueryAttributes" />
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<xsd:element name="inbound-channel-adapter">
+		<xsd:annotation>
+			<xsd:documentation> The definition for the inbound-channel-adapter
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:complexType>
+			<xsd:complexContent>
+				<xsd:extension base="jpaComponent">
+					<xsd:annotation>
+						<xsd:documentation>This is a JPA component with additional
+							attributes
+							for the select query
+						</xsd:documentation>
+					</xsd:annotation>
+					<xsd:sequence minOccurs="0" maxOccurs="1">
+						<xsd:element ref="integration:poller"/>
+					</xsd:sequence>
+					<xsd:attribute name="id" type="xsd:string" />
+					<xsd:attribute name="channel" type="xsd:string">
+						<xsd:annotation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.core.MessageChannel" />
+								</tool:annotation>
+							</xsd:appinfo>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="auto-startup" type="xsd:string"
+						default="true" />
+					<xsd:attribute name="order">
+						<xsd:annotation>
+							<xsd:documentation>
+								Specifies the order for invocation when this
+								endpoint is connected as a
+								subscriber to a SubscribableChannel.
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attributeGroup ref="selectQueryAttributes">
+						<xsd:annotation>
+							<xsd:documentation>
+								This attribute group gives us the select
+								attribute and the
+								max-rows-per-poll attribute							 
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attributeGroup>
+					<xsd:attribute name="update" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								This allows us to specify the optional update
+								statement after the select
+								has been updated 
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="update-per-row" type="xsd:boolean"
+						default="false">
+						<xsd:annotation>
+							<xsd:documentation>
+								The attributes indicates if the update
+								statement is to be executed
+								per row of the select result or once
+								for the entire result. This will
+								basically change the way the
+								parameter source is generated from the factory
+								Incase this is
+								true, a new parameter source is generated from the factory
+								for
+								each record iterating through the entire result set before
+								executing the
+								update. If this is false, the parameter source is
+								generated only once using
+								the collection returned by the select and is used to execute the
+								update once
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+					<xsd:attribute name="update-sql-parameter-source-factory"
+						type="xsd:string">
+						<xsd:annotation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.jpa.JPAQLParameterSourceFactory" />
+								</tool:annotation>
+							</xsd:appinfo>
+							<xsd:documentation>
+								The attribute specifies a
+								JPAQlParameterSourceFactory
+								that will be used
+								to evaluate the
+								value of the named parameters
+								provided in the
+								given update or
+								delete JPA Ql (given as the value
+								of update attribute)
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+
+					<xsd:attribute name="select-sql-parameter-source"
+						type="xsd:string">
+						<xsd:annotation>
+							<xsd:appinfo>
+								<tool:annotation kind="ref">
+									<tool:expected-type
+										type="org.springframework.integration.jpa.core.JpaQLParameterSource" />
+								</tool:annotation>
+							</xsd:appinfo>
+							<xsd:documentation>
+								specifies the sql parameter source that would be used to get the
+								parameters
+								for the select statement that gets executed 
+						</xsd:documentation>
+						</xsd:annotation>
+					</xsd:attribute>
+				</xsd:extension>
+			</xsd:complexContent>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:attributeGroup name="selectQueryAttributes">
+		<xsd:annotation>
+			<xsd:documentation>
+				The Group of attributes that specify the select
+				query and the max records
+				fetched for the query. This will be used in the inbound-channel-adapter and
+				the outbound-gateway 
+			</xsd:documentation>
+		</xsd:annotation>
+		<xsd:attribute name="select" type="xsd:string">
+			<xsd:annotation>
+				<xsd:documentation>
+					Defines the JPA select statement that will be
+					executed to get the result of the operation 
+						</xsd:documentation>
+			</xsd:annotation>
+		</xsd:attribute>
+		<xsd:attribute name="max-rows-per-poll" type="xsd:integer">
+			<xsd:annotation>
+				<xsd:documentation>
+					In case the select returns a large number of
+					records and we want to restrict the number of records,
+					setting this
+					attribute will limit the number of elements in the list of
+					result.
+					Please note that
+					the starting record will be from record number 1.
+				</xsd:documentation>
+			</xsd:annotation>
+		</xsd:attribute>
+	</xsd:attributeGroup>
+</xsd:schema>

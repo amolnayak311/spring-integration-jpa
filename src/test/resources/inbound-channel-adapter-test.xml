@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jpa="http://www.springframework.org/schema/integration/jpa"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:integration="http://www.springframework.org/schema/integration"	
+	xsi:schemaLocation=
+	"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd	
+	http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+	http://www.springframework.org/schema/integration/jpa http://www.springframework.org/schema/integration/jpa/spring-integration-jpa-2.1.xsd
+	http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+	http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+		<jdbc:embedded-database id="dataSource" type="H2">
+    	    <jdbc:script location="classpath:Student.sql"/>
+    	    <jdbc:script location="classpath:CreateStudents.sql"/>
+    	</jdbc:embedded-database>	
+		
+		<bean id="lc" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+			<property name="dataSource" ref="dataSource"/>	
+		</bean>
+		<!-- Define the JPA transaction mgr -->
+		<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+			<constructor-arg ref="lc"/>		
+		</bean>
+		
+		<integration:channel id="jpaInboundAdapterChannel"/>
+		<integration:channel id="jpaInboundAdapterChannelTwo"/>
+				
+		
+		<jpa:inbound-channel-adapter channel="jpaInboundAdapterChannelTwo" 
+									entity-manager-factory="lc"
+									select="select s from StudentReadStatus s">
+			<integration:poller fixed-delay="2000"/>	
+		</jpa:inbound-channel-adapter>
+		
+		
+		<jpa:inbound-channel-adapter channel="jpaInboundAdapterChannel" 
+									entity-manager-factory="lc"
+									select="select s from Student s"
+									update="update StudentReadStatus set readAt = NOW() where rollNumber = :rollNumber"
+									update-per-row="true"
+									update-sql-parameter-source-factory="updSqlSourceFactory">
+			<integration:poller fixed-delay="5000">
+				<integration:transactional transaction-manager="transactionManager"/>
+			</integration:poller>	
+		</jpa:inbound-channel-adapter>
+		
+		<bean id="updSqlSourceFactory" class="org.springframework.integration.jpa.ExpressionEvaluatingJPAQlParameterSourceFactory">
+			<property name="expressionMap">
+				<map>
+					<entry key="rollNumber" value="#this.rollNumber"/>					
+				</map>
+			</property>
+		</bean>
+</beans>

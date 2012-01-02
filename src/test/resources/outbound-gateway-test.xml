@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jpa="http://www.springframework.org/schema/integration/jpa"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:integration="http://www.springframework.org/schema/integration"	
+	xsi:schemaLocation=
+	"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd	
+	http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+	http://www.springframework.org/schema/integration/jpa http://www.springframework.org/schema/integration/jpa/spring-integration-jpa-2.1.xsd
+	http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+	http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+	    <jdbc:embedded-database id="dataSource" type="H2">
+    	    <jdbc:script location="classpath:Student.sql"/>        
+    	</jdbc:embedded-database>	
+		
+		<bean id="lc" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+			<property name="dataSource" ref="dataSource"/>	
+		</bean>
+		<!-- Define the JPA transaction mgr -->
+		<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+			<constructor-arg ref="lc"/>		
+		</bean>
+		
+		<integration:channel id="jpaOutboundGateway"/>
+		<integration:channel id="jpaReplyChannel"/>
+		
+		<!-- Sends the JPA entity over the request channel and gets the merged/created JPA entity over the 
+			reply channel -->
+		<jpa:outbound-gateway id="outboundGateway" request-channel="jpaOutboundGateway" 
+								entity-manager-factory="lc"	reply-channel="jpaReplyChannel">
+			<jpa:transactional transaction-manager="transactionManager"/>
+		</jpa:outbound-gateway>
+		
+		<integration:channel id="jpaOutboundGateway1"/>
+		<integration:channel id="jpaReplyChannel1"/>
+		
+		<jpa:outbound-gateway id="outboundGateway1" entity-manager-factory="lc"
+								request-channel="jpaOutboundGateway1"
+								reply-channel="jpaReplyChannel1"
+								select="select rollNumber,firstName from Student where rollNumber = :rollNumber">
+			<jpa:transactional transaction-manager="transactionManager"/>					
+		</jpa:outbound-gateway>		
+</beans>

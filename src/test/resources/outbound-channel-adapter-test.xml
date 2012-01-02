@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jpa="http://www.springframework.org/schema/integration/jpa"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:integration="http://www.springframework.org/schema/integration"	
+	xsi:schemaLocation=
+	"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd	
+	http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd
+	http://www.springframework.org/schema/integration/jpa http://www.springframework.org/schema/integration/jpa/spring-integration-jpa-2.1.xsd
+	http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+	http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+		<jdbc:embedded-database id="dataSource" type="H2">
+    	    <jdbc:script location="classpath:Student.sql"/>        
+    	</jdbc:embedded-database>	
+		
+		<bean id="lc" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+			<property name="dataSource" ref="dataSource"/>	
+		</bean>
+		<!-- Define the JPA transaction mgr -->
+		<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+			<constructor-arg ref="lc"/>		
+		</bean>
+		
+		<integration:channel id="jpaOutboundChannel"/>
+		<integration:channel id="jpaOutboundExecutorChannel">		
+			<integration:dispatcher task-executor="executor"/>
+		</integration:channel>
+		<integration:channel id="jpaOutboundJpaQLChannel"/>
+		
+		<task:executor id="executor" pool-size="10"/>
+		
+		<jpa:outbound-channel-adapter channel="jpaOutboundExecutorChannel" entity-manager-factory="lc">
+			<jpa:transactional transaction-manager="transactionManager"/>
+		</jpa:outbound-channel-adapter>
+		
+		<jpa:outbound-channel-adapter channel="jpaOutboundChannel" entity-manager-factory="lc"/>	
+		<jpa:outbound-channel-adapter channel="jpaOutboundJpaQLChannel" 
+				jpa-ql="update Student s set s.lastName = :lastName, lastUpdated = :lastUpdated
+								 where s.id in (select max(a.id) from Student a)" 
+				entity-manager-factory="lc"
+				parameter-source-factory="paramSource"/>
+				
+		
+		<bean id="paramSource"	
+				class="org.springframework.integration.jpa.ExpressionEvaluatingJPAQlParameterSourceFactory">
+				<property name="expressionMap">
+					<map>
+						<entry key="lastName" value="payload"/>
+						<entry key="lastUpdated" value="new java.util.Date()"/>
+					</map>
+				</property>
+		</bean>	
+		
+</beans>
